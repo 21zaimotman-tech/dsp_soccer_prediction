@@ -1,0 +1,9 @@
+apache-airflow==2.7.1
+pandas
+great-expectations==1.0.0
+psycopg2-binary
+sqlalchemy
+fastapi
+uvicorn
+streamlit
+requests
