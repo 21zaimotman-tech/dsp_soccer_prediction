@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:15
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  airflow:
+    image: apache/airflow:2.7.1
+    user: "${AIRFLOW_UID:-50000}:0"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./gx:/opt/airflow/gx
+      - ./data:/opt/airflow/data
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@db/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+
+volumes:
+  postgres_data:
