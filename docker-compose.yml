@@ -1,4 +1,5 @@
 services:
+  # Database Service: The single source of truth for Airflow and your App
   db:
     image: postgres:15
     healthcheck:
@@ -13,11 +14,32 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  # Model Service: Your FastAPI API
+  api:
+    build: ./model_service
+    healthcheck:
+      # syllabus requirement: check health via curl
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://airflow:airflow@db:5432/airflow
+
+  # Ingestion & Validation Service: Airflow
   airflow:
     image: apache/airflow:2.7.1
+    # User 50000:0 prevents permission errors on Windows-mapped volumes
     user: "${AIRFLOW_UID:-50000}:0"
     depends_on:
       db:
+        condition: service_healthy
+      api:
         condition: service_healthy
     volumes:
       - ./dags:/opt/airflow/dags
@@ -26,6 +48,8 @@ services:
     environment:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@db/airflow
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    ports:
+      - "8080:8080"
 
 volumes:
   postgres_data:
